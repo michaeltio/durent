@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 import AppCard from "@/components/app-card/AppCard";
 import { LocationWithTags } from "@/types/location";
@@ -86,7 +87,19 @@ export default function HomePage() {
 
   return (
     <main>
-      <div className="relative h-[340px] overflow-hidden">
+      {/* Background Image */}
+      <div className="fixed top-0 left-0 right-0 h-[340px] z-0">
+        <Image
+          src="/hero.webp"
+          alt="Background"
+          className="h-full w-full object-cover"
+          fill
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background" />
+      </div>
+
+      <div className="relative h-[340px] overflow-hidden z-10">
         <div className="relative z-10 flex h-full flex-col items-center justify-center px-4">
           <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-foreground mb-6 text-center">
             FIND YOUR SET
@@ -129,6 +142,56 @@ export default function HomePage() {
       </div>
 
       <div className="flex flex-wrap justify-start mt-8 gap-6 px-4 pb-8">
+        {loading ? (
+          <div className="flex justify-center items-center w-full py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : filteredLocations.length === 0 ? (
+          <div className="text-center w-full py-12 text-muted-foreground">
+            Tidak ada lokasi yang ditemukan
+          </div>
+        ) : (
+          filteredLocations.map((location) => (
+            <AppCard
+              key={location.shooting_location_id}
+              id={location.shooting_location_id}
+              name={location.shooting_location_name}
+              city={location.shooting_location_city}
+              price={location.shooting_location_price}
+              description={location.shooting_location_description}
+              area={location.shooting_location_area}
+              imageUrl={location.shooting_location_image_url}
+              pax={location.shooting_location_pax}
+              rate={location.shooting_location_rate}
+              tags={location.tags}
+            />
+          ))
+        )}
+        {loading ? (
+          <div className="flex justify-center items-center w-full py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : filteredLocations.length === 0 ? (
+          <div className="text-center w-full py-12 text-muted-foreground">
+            Tidak ada lokasi yang ditemukan
+          </div>
+        ) : (
+          filteredLocations.map((location) => (
+            <AppCard
+              key={location.shooting_location_id}
+              id={location.shooting_location_id}
+              name={location.shooting_location_name}
+              city={location.shooting_location_city}
+              price={location.shooting_location_price}
+              description={location.shooting_location_description}
+              area={location.shooting_location_area}
+              imageUrl={location.shooting_location_image_url}
+              pax={location.shooting_location_pax}
+              rate={location.shooting_location_rate}
+              tags={location.tags}
+            />
+          ))
+        )}
         {loading ? (
           <div className="flex justify-center items-center w-full py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
