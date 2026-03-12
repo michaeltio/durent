@@ -45,10 +45,15 @@ export async function POST(req: NextRequest) {
       }
 
       // Ekstrak teks dari PDF menggunakan @langchain/community PDFLoader
-      const blob = new Blob([await file.arrayBuffer()], { type: "application/pdf" });
+      const blob = new Blob([await file.arrayBuffer()], {
+        type: "application/pdf",
+      });
       const loader = new PDFLoader(blob);
       const docs = await loader.load();
-      scriptText = docs.map((d) => d.pageContent).join("\n").trim();
+      scriptText = docs
+        .map((d) => d.pageContent)
+        .join("\n")
+        .trim();
 
       if (!scriptText) {
         return new Response(
@@ -65,10 +70,10 @@ export async function POST(req: NextRequest) {
       conversationHistory = body.conversationHistory || [];
 
       if (!message || typeof message !== "string") {
-        return new Response(
-          JSON.stringify({ error: "Message is required" }),
-          { status: 400, headers: { "Content-Type": "application/json" } },
-        );
+        return new Response(JSON.stringify({ error: "Message is required" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
       }
     }
 
