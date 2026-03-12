@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { upsertLocationEmbedding } from "@/lib/embedding";
 
 // PUT update location by ID
 export async function PUT(
@@ -145,6 +146,20 @@ export async function PUT(
     }
     console.log("Test 8");
 
+    // Generate and store embedding (non-blocking)
+    upsertLocationEmbedding({
+      shooting_location_id: id,
+      name,
+      city: city?.trim() || "",
+      price: price?.trim() || "",
+      description: description?.trim() || "",
+      area,
+      pax,
+      rate,
+      tags,
+      image_url: newImageUrls[0],
+    });
+
     return NextResponse.json(
       { message: "Lokasi berhasil diupdate", location: updatedLocation },
       { status: 200 },
@@ -189,6 +204,12 @@ export async function DELETE(
     // Delete location tags first (foreign key constraint)
     await supabase
       .from("shooting_location_tag")
+      .delete()
+      .eq("shooting_location_id", id);
+
+    // Delete location embeddings (foreign key constraint)
+    await supabase
+      .from("location_embeddings")
       .delete()
       .eq("shooting_location_id", id);
 

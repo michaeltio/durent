@@ -60,6 +60,7 @@ export default function LocationsPage() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Fetch locations from API
   const fetchLocations = useCallback(async () => {
@@ -139,6 +140,7 @@ export default function LocationsPage() {
     setImageFiles([]);
     setImagePreviews([]);
     setExistingImageUrls([]);
+    setFormErrors({});
     setDialogOpen(true);
   };
 
@@ -159,15 +161,49 @@ export default function LocationsPage() {
     setImageFiles([]);
     setImagePreviews([]);
     setExistingImageUrls(location.shooting_location_image_url || []);
+    setFormErrors({});
     setDialogOpen(true);
+  };
+
+  // Validate all required fields
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!String(formData.shooting_location_name ?? "").trim()) errors.name = "Wajib diisi";
+    if (!String(formData.shooting_location_description ?? "").trim()) errors.description = "Wajib diisi";
+    if (!String(formData.shooting_location_city ?? "").trim()) errors.city = "Wajib diisi";
+    if (!String(formData.shooting_location_price ?? "").trim()) errors.price = "Wajib diisi";
+    if (!formData.shooting_location_area || formData.shooting_location_area <= 0) errors.area = "Wajib diisi";
+    if (!formData.shooting_location_pax || formData.shooting_location_pax <= 0) errors.pax = "Wajib diisi";
+    if (!formData.shooting_location_rate || formData.shooting_location_rate <= 0) errors.rate = "Wajib diisi";
+    else if (formData.shooting_location_rate > 5) errors.rate = "Rating maksimal 5";
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      const fieldOrder = ["name", "description", "city", "price", "area", "pax", "rate"];
+      const firstError = fieldOrder.find((f) => errors[f]);
+      if (firstError) {
+        setTimeout(() => {
+          const el = document.getElementById(`field-${firstError}`);
+          if (!el) return;
+          // Scroll the dialog's internal scrollable container, not the window
+          let parent = el.parentElement;
+          while (parent) {
+            if (parent.scrollHeight > parent.clientHeight + 1) {
+              const offset = el.getBoundingClientRect().top - parent.getBoundingClientRect().top + parent.scrollTop - 80;
+              parent.scrollTo({ top: offset, behavior: "smooth" });
+              break;
+            }
+            parent = parent.parentElement;
+          }
+          el.focus();
+        }, 50);
+      }
+    }
+    return Object.keys(errors).length === 0;
   };
 
   // Save location (add or edit)
   const saveLocation = async () => {
-    if (!formData.shooting_location_name.trim()) {
-      toast.error("Nama lokasi tidak boleh kosong");
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       setSaving(true);
@@ -405,29 +441,35 @@ export default function LocationsPage() {
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-1.5">
-              <Label>Nama Lokasi</Label>
+              <Label>Nama Lokasi <span className="text-destructive">*</span></Label>
+              {formErrors.name && <p className="text-xs text-destructive -mb-1">{formErrors.name}</p>}
               <Input
+                id="field-name"
                 value={formData.shooting_location_name}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setFormData((p) => ({
                     ...p,
                     shooting_location_name: e.target.value,
-                  }))
-                }
+                  }));
+                  setFormErrors((prev) => ({ ...prev, name: "" }));
+                }}
                 placeholder="Contoh: Skyline Rooftop Terrace"
               />
             </div>
 
             <div className="grid gap-1.5">
-              <Label>Deskripsi</Label>
+              <Label>Deskripsi <span className="text-destructive">*</span></Label>
+              {formErrors.description && <p className="text-xs text-destructive -mb-1">{formErrors.description}</p>}
               <Textarea
+                id="field-description"
                 value={formData.shooting_location_description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                   setFormData((p) => ({
                     ...p,
                     shooting_location_description: e.target.value,
-                  }))
-                }
+                  }));
+                  setFormErrors((prev) => ({ ...prev, description: "" }));
+                }}
                 placeholder="Deskripsi lokasi..."
                 rows={3}
               />
@@ -435,28 +477,34 @@ export default function LocationsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-1.5">
-                <Label>Kota</Label>
+                <Label>Kota <span className="text-destructive">*</span></Label>
+                {formErrors.city && <p className="text-xs text-destructive -mb-1">{formErrors.city}</p>}
                 <Input
+                  id="field-city"
                   value={formData.shooting_location_city}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     setFormData((p) => ({
                       ...p,
                       shooting_location_city: e.target.value,
-                    }))
-                  }
+                    }));
+                    setFormErrors((prev) => ({ ...prev, city: "" }));
+                  }}
                   placeholder="Jakarta Selatan"
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label>Harga</Label>
+                <Label>Harga <span className="text-destructive">*</span></Label>
+                {formErrors.price && <p className="text-xs text-destructive -mb-1">{formErrors.price}</p>}
                 <Input
+                  id="field-price"
                   value={formData.shooting_location_price}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     setFormData((p) => ({
                       ...p,
                       shooting_location_price: e.target.value,
-                    }))
-                  }
+                    }));
+                    setFormErrors((prev) => ({ ...prev, price: "" }));
+                  }}
                   placeholder="Rp 5.000.000/hari"
                 />
               </div>
@@ -464,49 +512,55 @@ export default function LocationsPage() {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-1.5">
-                <Label>Area (m²)</Label>
+                <Label>Area (m²) <span className="text-destructive">*</span></Label>
+                {formErrors.area && <p className="text-xs text-destructive -mb-1">{formErrors.area}</p>}
                 <Input
-                  type="number"
-                  min={0}
-                  value={formData.shooting_location_area}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  id="field-area"
+                  value={formData.shooting_location_area || ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     setFormData((p) => ({
                       ...p,
                       shooting_location_area: parseFloat(e.target.value) || 0,
-                    }))
-                  }
+                    }));
+                    setFormErrors((prev) => ({ ...prev, area: "" }));
+                  }}
                   placeholder="100"
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label>Kapasitas (orang)</Label>
+                <Label>Kapasitas (orang) <span className="text-destructive">*</span></Label>
+                {formErrors.pax && <p className="text-xs text-destructive -mb-1">{formErrors.pax}</p>}
                 <Input
-                  type="number"
-                  min={0}
-                  value={formData.shooting_location_pax}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  id="field-pax"
+                  value={formData.shooting_location_pax || ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     setFormData((p) => ({
                       ...p,
                       shooting_location_pax: parseInt(e.target.value) || 0,
-                    }))
-                  }
+                    }));
+                    setFormErrors((prev) => ({ ...prev, pax: "" }));
+                  }}
                   placeholder="50"
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label>Rating (0-5)</Label>
+                <Label>Rating (0-5) <span className="text-destructive">*</span></Label>
+                {formErrors.rate && <p className="text-xs text-destructive -mb-1">{formErrors.rate}</p>}
                 <Input
-                  type="number"
-                  min={0}
-                  max={5}
-                  step={0.1}
-                  value={formData.shooting_location_rate}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  id="field-rate"
+                  value={formData.shooting_location_rate || ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const val = parseFloat(e.target.value) || 0;
                     setFormData((p) => ({
                       ...p,
-                      shooting_location_rate: parseFloat(e.target.value) || 0,
-                    }))
-                  }
+                      shooting_location_rate: val,
+                    }));
+                    if (val > 5) {
+                      setFormErrors((prev) => ({ ...prev, rate: "Rating maksimal 5" }));
+                    } else {
+                      setFormErrors((prev) => ({ ...prev, rate: "" }));
+                    }
+                  }}
                   placeholder="4.5"
                 />
               </div>
@@ -514,71 +568,63 @@ export default function LocationsPage() {
 
             <div className="grid gap-1.5">
               <Label>Upload Gambar (Multiple)</Label>
-              <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
                 {/* Display existing images */}
-                {existingImageUrls.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2">
-                    {existingImageUrls.map((url, index) => (
-                      <div key={`existing-${index}`} className="relative">
-                        <img
-                          src={url}
-                          alt={`Existing ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 h-6 w-6"
-                          onClick={() => removeImage(index, true)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
+                {existingImageUrls.map((url, index) => (
+                  <div key={`existing-${index}`} className="relative">
+                    <img
+                      src={url}
+                      alt={`Existing ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6"
+                      onClick={() => removeImage(index, true)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
                   </div>
-                )}
+                ))}
 
                 {/* Display new image previews */}
-                {imagePreviews.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={`preview-${index}`} className="relative">
-                        <img
-                          src={preview}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 h-6 w-6"
-                          onClick={() =>
-                            removeImage(existingImageUrls.length + index, false)
-                          }
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
+                {imagePreviews.map((preview, index) => (
+                  <div key={`preview-${index}`} className="relative">
+                    <img
+                      src={preview}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6"
+                      onClick={() =>
+                        removeImage(existingImageUrls.length + index, false)
+                      }
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
                   </div>
-                )}
+                ))}
 
-                {/* Upload button */}
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                  <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Pilih gambar untuk lokasi
-                  </p>
+                {/* Upload button placeholder */}
+                <label className="relative flex flex-col items-center justify-center h-24 border-2 border-dashed border-border rounded-lg hover:border-primary/50 hover:bg-accent/50 transition-colors cursor-pointer group">
+                  <Plus className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <span className="text-xs text-muted-foreground mt-1 group-hover:text-primary transition-colors">
+                    Tambah
+                  </span>
                   <Input
                     type="file"
                     accept="image/*"
                     multiple
                     onChange={handleImageChange}
-                    className="max-w-xs mx-auto"
+                    className="hidden"
                   />
-                </div>
+                </label>
               </div>
             </div>
 
@@ -609,8 +655,14 @@ export default function LocationsPage() {
               </Button>
             </DialogClose>
             <Button onClick={saveLocation} disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingLocation ? "Simpan" : "Tambah"}
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                editingLocation ? "Simpan" : "Tambah"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

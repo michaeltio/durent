@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { upsertLocationEmbedding } from "@/lib/embedding";
 
 // GET all locations
 export async function GET() {
@@ -156,6 +157,20 @@ export async function POST(request: Request) {
         await supabase.from("shooting_location_tag").insert(locationTags);
       }
     }
+
+    // Generate and store embedding (non-blocking)
+    upsertLocationEmbedding({
+      shooting_location_id: newLocation.shooting_location_id,
+      name,
+      city: city?.trim() || "",
+      price: price?.trim() || "",
+      description: description?.trim() || "",
+      area,
+      pax,
+      rate,
+      tags,
+      image_url: imageUrls[0],
+    });
 
     return NextResponse.json(
       { message: "Lokasi berhasil ditambahkan", location: newLocation },
