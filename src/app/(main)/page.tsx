@@ -85,7 +85,7 @@ export default function HomePage() {
   return (
     <main>
       {/* Background Image */}
-      <div className="fixed top-0 left-0 right-0 h-[340px] z-0">
+      <div className="fixed top-0 left-0 right-0 h-[340px] -z-10">
         <Image
           src="/hero.webp"
           alt="Background"

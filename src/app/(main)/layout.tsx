@@ -1,3 +1,4 @@
+"use client";
 import { AppSidebar } from "@/components/app-sidebar/AppSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
@@ -6,6 +7,8 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
+ 
+  
   return (
     <SidebarProvider>
       <AppSidebar />
