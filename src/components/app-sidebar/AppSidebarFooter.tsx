@@ -89,8 +89,8 @@ export default function AppSidebarFooter() {
               </Popover>
             ) : (
               <Link href="/login">
-                <div className="flex justify-center items-center rounded-lg w-12 h-12">
-                  <LogIn className="w-5 h-5" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-lg">
+                  <LogIn className="h-6 w-6" />
                 </div>
               </Link>
             )}

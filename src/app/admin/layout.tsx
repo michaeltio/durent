@@ -1,4 +1,4 @@
-import { AppSidebarAdmin } from "@/components/app-sidebar-admin/AppSidebarAdmin";
+import { AppSidebarAdmin } from "@/components/app-sidebar/AppSidebarAdmin";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -40,7 +40,7 @@ export default async function AdminLayout({
   return (
     <SidebarProvider>
       <AppSidebarAdmin />
-      <main className="relative z-10 ml-20 w-[calc(100%-5rem)] min-h-screen">
+      <main className="relative z-10 ml-24 min-h-screen w-[calc(100%-6rem)]">
         {children}
       </main>
     </SidebarProvider>

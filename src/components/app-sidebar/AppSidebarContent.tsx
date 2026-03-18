@@ -6,18 +6,32 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { House, ShoppingBag, Sparkles } from "lucide-react";
+import { CalendarCheck, House, ShoppingBag, Sparkles } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+function isPathActive(pathname: string, href: string) {
+  if (href === "/") {
+    return pathname === "/";
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export default function AppSidebarContent() {
   const { totalItems } = useCart();
+  const pathname = usePathname();
 
   return (
     <SidebarContent className="py-2">
       <SidebarMenu>
         <SidebarMenuItem className="px-1">
-          <SidebarMenuButton asChild className="h-auto">
+          <SidebarMenuButton
+            asChild
+            className="h-auto"
+            isActive={isPathActive(pathname, "/")}
+          >
             <Link
               href="/"
               className="flex flex-col items-center gap-1.5 py-3 px-2"
@@ -30,7 +44,11 @@ export default function AppSidebarContent() {
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem className="px-1">
-          <SidebarMenuButton asChild className="h-auto">
+          <SidebarMenuButton
+            asChild
+            className="h-auto"
+            isActive={isPathActive(pathname, "/ai-scout")}
+          >
             <Link
               href="/ai-scout"
               className="flex flex-col items-center gap-1.5 py-3 px-2"
@@ -43,7 +61,28 @@ export default function AppSidebarContent() {
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem className="px-1">
-          <SidebarMenuButton asChild className="h-auto">
+          <SidebarMenuButton
+            asChild
+            className="h-auto"
+            isActive={isPathActive(pathname, "/reservations")}
+          >
+            <Link
+              href="/reservations"
+              className="flex flex-col items-center gap-1.5 py-3 px-2"
+            >
+              <CalendarCheck className="h-6 w-6 shrink-0" />
+              <span className="text-[11px] leading-tight text-center font-medium">
+                Reservations
+              </span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem className="px-1">
+          <SidebarMenuButton
+            asChild
+            className="h-auto"
+            isActive={isPathActive(pathname, "/cart")}
+          >
             <Link
               href="/cart"
               className="relative flex flex-col items-center gap-1.5 py-3 px-2"

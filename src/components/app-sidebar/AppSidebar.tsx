@@ -9,7 +9,7 @@ export function AppSidebar() {
     <Sidebar
       variant="floating"
       collapsible="none"
-      className="fixed z-20 w-16 h-[calc(100vh-1rem)] m-2 rounded-lg border bg-sidebar/10 backdrop-blur-md"
+      className="fixed z-20 h-[calc(100vh-1rem)] w-20 m-2 rounded-lg border bg-sidebar/10 backdrop-blur-md"
     >
       <AppSidebarHeader />
       <AppSidebarContent />

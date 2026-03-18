@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { ArrowLeft, CalendarIcon, ShoppingBag, Trash2 } from "lucide-react";
-import Script from "next/script";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -67,6 +66,70 @@ type TokenizerResponse = {
   message?: string;
 };
 
+async function ensureSnapLoaded(snapUrl: string, clientKey: string) {
+  const win = window as Window & { snap?: Snap };
+
+  if (win.snap) {
+    return win.snap;
+  }
+
+  const waitForSnap = () =>
+    new Promise<Snap>((resolve, reject) => {
+      let attempts = 20;
+
+      const check = () => {
+        if (win.snap) {
+          resolve(win.snap);
+          return;
+        }
+
+        attempts -= 1;
+
+        if (attempts <= 0) {
+          reject(new Error("Snap.js loaded but window.snap is unavailable."));
+          return;
+        }
+
+        window.setTimeout(check, 100);
+      };
+
+      check();
+    });
+
+  return new Promise<Snap>((resolve, reject) => {
+    const existingScript = document.getElementById(
+      "midtrans-snap",
+    ) as HTMLScriptElement | null;
+    const script = existingScript ?? document.createElement("script");
+
+    if (!existingScript) {
+      script.id = "midtrans-snap";
+      script.src = snapUrl;
+      script.async = true;
+      script.setAttribute("data-client-key", clientKey);
+      document.body.appendChild(script);
+    }
+
+    const handleLoad = () => {
+      void waitForSnap().then(resolve).catch(reject);
+    };
+
+    const handleError = () => {
+      reject(new Error("Gagal memuat Snap.js dari Midtrans."));
+    };
+
+    script.addEventListener("load", handleLoad, { once: true });
+    script.addEventListener("error", handleError, { once: true });
+
+    // If script already exists and has been loaded earlier, resolve immediately.
+    window.setTimeout(() => {
+      if (win.snap) {
+        resolve(win.snap);
+      }
+    }, 0);
+  });
+}
+
 function normalizeToStartOfDay(value: Date | string | null | undefined) {
   const parsed = value ? new Date(value) : null;
 
@@ -97,12 +160,42 @@ export default function CartPage() {
     process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === "true"
       ? "https://app.midtrans.com/snap/snap.js"
       : "https://app.sandbox.midtrans.com/snap/snap.js";
+  const midtransClientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY;
+
+  const ensureSnap = useCallback(async () => {
+    if (!midtransClientKey) {
+      setIsSnapReady(false);
+      console.error("NEXT_PUBLIC_MIDTRANS_CLIENT_KEY belum diatur.");
+      return null;
+    }
+
+    try {
+      const snap = await ensureSnapLoaded(snapUrl, midtransClientKey);
+      setIsSnapReady(true);
+      return snap;
+    } catch (error) {
+      setIsSnapReady(false);
+      console.error("Snap.js belum siap:", error);
+      return null;
+    }
+  }, [midtransClientKey, snapUrl]);
+
+  useEffect(() => {
+    void ensureSnap();
+  }, [ensureSnap]);
 
   const handleCheckout = async () => {
     if (hasUnselectedDateRange) {
       console.error(
         "Tanggal sewa wajib diisi untuk semua item sebelum checkout.",
       );
+      return;
+    }
+
+    const snap = await ensureSnap();
+
+    if (!snap) {
+      console.error("Snap.js belum siap. Coba lagi beberapa detik.");
       return;
     }
 
@@ -167,13 +260,6 @@ export default function CartPage() {
       return;
     }
 
-    const snap = (window as Window & { snap?: Snap }).snap;
-
-    if (!snap) {
-      console.error("Snap.js belum siap. Coba lagi beberapa detik.");
-      return;
-    }
-
     snap.pay(tokenizerResult.token, {
       onSuccess: (result) => {
         console.log("Midtrans success:", result);
@@ -198,12 +284,6 @@ export default function CartPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-8">
-      <Script
-        src={snapUrl}
-        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
-        strategy="afterInteractive"
-        onLoad={() => setIsSnapReady(true)}
-      />
       <div className="flex flex-col gap-6 rounded-3xl border border-border/40 bg-card/50 p-6 shadow-sm backdrop-blur-sm lg:flex-row lg:items-end lg:justify-between">
         <div className="flex items-center gap-4">
           <Link
@@ -440,7 +520,7 @@ export default function CartPage() {
               className="mt-6 w-full"
               size="lg"
               onClick={handleCheckout}
-              disabled={!isSnapReady || hasUnselectedDateRange}
+              disabled={hasUnselectedDateRange}
             >
               Checkout
             </Button>

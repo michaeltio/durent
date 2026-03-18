@@ -48,6 +48,7 @@ export default function AiScoutPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sceneResults, setSceneResults] = useState<Scene[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -159,18 +160,45 @@ export default function AiScoutPage() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const validatePdfFile = (file: File) => {
     if (file.type !== "application/pdf") {
       toast.error("Hanya file PDF yang diperbolehkan");
-      return;
+      return false;
     }
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Ukuran file maksimal 5MB");
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!validatePdfFile(file)) return;
     setPdfFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    if (!validatePdfFile(file)) return;
+
+    setPdfFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
   };
 
   return (
@@ -281,17 +309,33 @@ export default function AiScoutPage() {
             className="hidden"
             onChange={handleFileChange}
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-[80px] w-[50px] shrink-0"
+          <div
+            role="button"
+            tabIndex={0}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
             onClick={() => fileInputRef.current?.click()}
-            disabled={loading}
-            title="Upload PDF naskah"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
+            className={`h-[80px] w-[120px] shrink-0 rounded-md border border-dashed transition-colors flex flex-col items-center justify-center px-2 text-center cursor-pointer ${
+              loading
+                ? "opacity-50 pointer-events-none"
+                : isDragOver
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-background hover:bg-muted/40"
+            }`}
+            title="Drag & drop atau klik untuk upload PDF"
           >
             <Paperclip className="h-4 w-4" />
-          </Button>
+            <span className="mt-1 text-[10px] leading-tight text-muted-foreground">
+              Drop PDF
+            </span>
+          </div>
           <Textarea
             ref={textareaRef}
             value={input}

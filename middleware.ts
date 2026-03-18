@@ -13,6 +13,7 @@ export async function middleware(request: NextRequest) {
 
   // Admin routes
   const isAdminRoute = url.pathname.startsWith("/admin");
+  const isReservationsRoute = url.pathname.startsWith("/reservations");
 
   // Jika user sudah login dan mencoba akses login/register
   if (user && isPublicRoute) {
@@ -53,6 +54,12 @@ export async function middleware(request: NextRequest) {
       url.pathname = "/";
       return NextResponse.redirect(url);
     }
+  }
+
+  // Jika user mencoba akses halaman reservasi
+  if (isReservationsRoute && !user) {
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;
