@@ -4,9 +4,10 @@ import { ArrowLeft, CalendarCheck, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useCart } from "@/hooks/use-cart";
+import { createClient } from "@/lib/supabase/client";
 
 function parsePrice(price: string | number | null | undefined) {
   const numericValue = String(price ?? "").replace(/[^0-9]/g, "");
@@ -15,6 +16,19 @@ function parsePrice(price: string | number | null | undefined) {
 
 function formatPrice(value: number) {
   return `Rp ${value.toLocaleString("id-ID")}`;
+}
+
+function parseNumber(value: string | number | null | undefined) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === "string") {
+    const sanitized = value.replace(/[^0-9]/g, "");
+    return Number.parseInt(sanitized, 10) || 0;
+  }
+
+  return 0;
 }
 
 function getStatusLabel(from: Date, to: Date) {
@@ -32,9 +46,179 @@ function getStatusLabel(from: Date, to: Date) {
   return { text: "Akan Datang", cls: "bg-accent text-accent-foreground" };
 }
 
+type OrderRow = {
+  order_id: string;
+  payment_status: string | null;
+  created_at: string | null;
+};
+
+type OrderItemRow = {
+  order_id: string;
+  location_id: string;
+  booking_start: string;
+  booking_end: string;
+  price: string | number | null;
+  quantity: number | null;
+};
+
+type LocationRow = {
+  shooting_location_id: string;
+  shooting_location_name: string;
+  shooting_location_city: string;
+  shooting_location_image_url: string[] | null;
+};
+
+type ReservationCardItem = {
+  id: string;
+  orderId: string;
+  name: string;
+  city: string;
+  imageUrl: string;
+  bookingFrom: Date;
+  bookingTo: Date;
+  days: number;
+  subtotal: number;
+  paymentStatus: string;
+};
+
 export default function ReservationsPage() {
   const router = useRouter();
-  const { items, getDays } = useCart();
+  const supabase = useMemo(() => createClient(), []);
+  const [reservations, setReservations] = useState<ReservationCardItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadReservations = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) {
+        setErrorMessage("Gagal memverifikasi user.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      const { data: orderRows, error: orderError } = await supabase
+        .from("orders")
+        .select("order_id, payment_status, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (orderError) {
+        console.error("Fetch orders error:", orderError);
+        setErrorMessage("Gagal mengambil data orders.");
+        setIsLoading(false);
+        return;
+      }
+
+      const orders = (orderRows ?? []) as OrderRow[];
+
+      if (orders.length === 0) {
+        setReservations([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const orderIds = orders.map((order) => order.order_id);
+      const orderMap = new Map(orders.map((order) => [order.order_id, order]));
+
+      const { data: orderItemRows, error: orderItemsError } = await supabase
+        .from("order_items")
+        .select(
+          "order_id, location_id, booking_start, booking_end, price, quantity",
+        )
+        .in("order_id", orderIds)
+        .order("booking_start", { ascending: false });
+
+      if (orderItemsError) {
+        console.error("Fetch order_items error:", orderItemsError);
+        setErrorMessage("Gagal mengambil data order items.");
+        setIsLoading(false);
+        return;
+      }
+
+      const orderItems = (orderItemRows ?? []) as OrderItemRow[];
+
+      if (orderItems.length === 0) {
+        setReservations([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const locationIds = [
+        ...new Set(orderItems.map((item) => item.location_id)),
+      ];
+
+      const { data: locationRows, error: locationError } = await supabase
+        .from("shooting_locations")
+        .select(
+          "shooting_location_id, shooting_location_name, shooting_location_city, shooting_location_image_url",
+        )
+        .in("shooting_location_id", locationIds);
+
+      if (locationError) {
+        console.error("Fetch shooting_locations error:", locationError);
+        setErrorMessage("Gagal mengambil data lokasi.");
+        setIsLoading(false);
+        return;
+      }
+
+      const locations = (locationRows ?? []) as LocationRow[];
+      const locationMap = new Map(
+        locations.map((location) => [location.shooting_location_id, location]),
+      );
+
+      const reservationItems: ReservationCardItem[] = orderItems
+        .map((item) => {
+          const order = orderMap.get(item.order_id);
+          const location = locationMap.get(item.location_id);
+
+          const from = new Date(item.booking_start);
+          const to = new Date(item.booking_end);
+
+          if (
+            !location ||
+            Number.isNaN(from.getTime()) ||
+            Number.isNaN(to.getTime())
+          ) {
+            return null;
+          }
+
+          const unitPrice = parseNumber(item.price);
+          const days = Math.max(1, Number(item.quantity ?? 1));
+
+          return {
+            id: `${item.order_id}-${item.location_id}-${item.booking_start}`,
+            orderId: item.order_id,
+            name: location.shooting_location_name,
+            city: location.shooting_location_city,
+            imageUrl: location.shooting_location_image_url?.[0] || "/hero.webp",
+            bookingFrom: from,
+            bookingTo: to,
+            days,
+            subtotal: unitPrice * days,
+            paymentStatus: String(order?.payment_status || "pending"),
+          };
+        })
+        .filter((item): item is ReservationCardItem => item !== null);
+
+      setReservations(reservationItems);
+      setIsLoading(false);
+    };
+
+    void loadReservations();
+  }, [router, supabase]);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-8">
@@ -49,14 +233,33 @@ export default function ReservationsPage() {
         <h1 className="font-display text-2xl font-bold text-foreground">
           Reservasi Saya
         </h1>
-        {items.length > 0 ? (
+        {reservations.length > 0 ? (
           <span className="rounded-lg bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-            {items.length} booking
+            {reservations.length} booking
           </span>
         ) : null}
       </div>
 
-      {items.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-36 animate-pulse rounded-2xl border border-border/40 bg-card/40"
+            />
+          ))}
+        </div>
+      ) : errorMessage ? (
+        <div className="flex min-h-[320px] flex-col items-center justify-center rounded-3xl border border-dashed border-destructive/40 bg-destructive/5 px-6 py-12 text-center">
+          <h2 className="font-display text-lg font-semibold text-foreground">
+            Gagal Memuat Reservasi
+          </h2>
+          <p className="mb-6 mt-2 text-sm text-muted-foreground">
+            {errorMessage}
+          </p>
+          <Button onClick={() => window.location.reload()}>Coba lagi</Button>
+        </div>
+      ) : reservations.length === 0 ? (
         <div className="flex min-h-[420px] flex-col items-center justify-center rounded-3xl border border-dashed border-border/50 bg-card/30 px-6 py-16 text-center">
           <CalendarCheck className="mb-4 h-16 w-16 text-muted-foreground" />
           <h2 className="font-display text-lg font-semibold text-foreground">
@@ -69,28 +272,21 @@ export default function ReservationsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {items.map((item) => {
-            const days = getDays(item);
-            const from = item.dateRange?.from ?? null;
-            const to = item.dateRange?.to ?? from;
-            const subtotal = parsePrice(item.price) * days;
-            const status =
-              from && to
-                ? getStatusLabel(from, to)
-                : {
-                    text: "Tanggal Belum Dipilih",
-                    cls: "bg-muted text-muted-foreground",
-                  };
+          {reservations.map((reservation) => {
+            const status = getStatusLabel(
+              reservation.bookingFrom,
+              reservation.bookingTo,
+            );
 
             return (
               <article
-                key={item.id}
+                key={reservation.id}
                 className="rounded-2xl border border-border/40 bg-card/50 p-4"
               >
                 <div className="flex gap-4">
                   <img
-                    src={item.imageUrl}
-                    alt={item.name}
+                    src={reservation.imageUrl}
+                    alt={reservation.name}
                     className="h-28 w-28 rounded-xl object-cover"
                   />
                   <div className="flex min-w-0 flex-1 flex-col justify-between">
@@ -98,11 +294,11 @@ export default function ReservationsPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <h3 className="truncate font-display text-base font-semibold text-foreground">
-                            {item.name}
+                            {reservation.name}
                           </h3>
                           <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                             <MapPin className="h-3.5 w-3.5" />
-                            <span>{item.city}</span>
+                            <span>{reservation.city}</span>
                           </div>
                         </div>
                         <span
@@ -114,35 +310,26 @@ export default function ReservationsPage() {
 
                       <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                         <CalendarCheck className="h-3.5 w-3.5" />
-                        {from && to ? (
-                          <span>
-                            {format(from, "d MMM yyyy", { locale: id })} -{" "}
-                            {format(to, "d MMM yyyy", { locale: id })}
-                          </span>
-                        ) : (
-                          <span>Pilih tanggal sewa di keranjang</span>
-                        )}
+                        <span>
+                          {format(reservation.bookingFrom, "d MMM yyyy", {
+                            locale: id,
+                          })}{" "}
+                          -{" "}
+                          {format(reservation.bookingTo, "d MMM yyyy", {
+                            locale: id,
+                          })}
+                        </span>
                         <span className="text-muted-foreground/50">•</span>
-                        <span>{days > 0 ? `${days} hari` : "-"}</span>
+                        <span>{`${reservation.days} hari`}</span>
                       </div>
-
-                      {item.tags.length > 0 ? (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {item.tags.slice(0, 3).map((tag: string) => (
-                            <span
-                              key={tag}
-                              className="rounded-md bg-secondary/80 px-2 py-0.5 text-[10px] text-secondary-foreground"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
+                      <div className="mt-2 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                        {`Order ${reservation.orderId} • Status ${reservation.paymentStatus}`}
+                      </div>
                     </div>
 
                     <div className="mt-3 flex items-center justify-end">
                       <span className="text-sm font-semibold text-primary">
-                        {formatPrice(subtotal)}
+                        {formatPrice(reservation.subtotal)}
                       </span>
                     </div>
                   </div>

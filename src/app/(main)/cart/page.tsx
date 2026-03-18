@@ -66,6 +66,17 @@ type TokenizerResponse = {
   message?: string;
 };
 
+type OrderItemBookingRow = {
+  location_id: string;
+  booking_start: string;
+  booking_end: string;
+};
+
+type BookedRange = {
+  from: Date;
+  to: Date;
+};
+
 async function ensureSnapLoaded(snapUrl: string, clientKey: string) {
   const win = window as Window & { snap?: Snap };
 
@@ -141,10 +152,23 @@ function normalizeToStartOfDay(value: Date | string | null | undefined) {
   return parsed;
 }
 
+function isDateWithinRange(date: Date, range: BookedRange) {
+  const target = normalizeToStartOfDay(date);
+
+  if (!target) {
+    return false;
+  }
+
+  return target >= range.from && target <= range.to;
+}
+
 export default function CartPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [isSnapReady, setIsSnapReady] = useState(false);
+  const [bookedRangesByLocation, setBookedRangesByLocation] = useState<
+    Record<string, BookedRange[]>
+  >({});
   const { items, removeItem, updateDateRange, clearCart, totalItems, getDays } =
     useCart();
   const hasUnselectedDateRange = items.some(
@@ -183,6 +207,61 @@ export default function CartPage() {
   useEffect(() => {
     void ensureSnap();
   }, [ensureSnap]);
+
+  useEffect(() => {
+    const loadBookedRanges = async () => {
+      const locationIds = [...new Set(items.map((item) => item.id))];
+
+      if (locationIds.length === 0) {
+        setBookedRangesByLocation({});
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("order_items")
+        .select("location_id, booking_start, booking_end")
+        .in("location_id", locationIds);
+
+      if (error) {
+        console.error("Gagal mengambil tanggal booking:", error);
+        setBookedRangesByLocation({});
+        return;
+      }
+
+      const rows = (data ?? []) as OrderItemBookingRow[];
+      const grouped: Record<string, BookedRange[]> = {};
+
+      for (const row of rows) {
+        const from = normalizeToStartOfDay(row.booking_start);
+        const to = normalizeToStartOfDay(row.booking_end);
+
+        if (!from || !to) {
+          continue;
+        }
+
+        const normalizedRange: BookedRange =
+          to < from
+            ? {
+                from,
+                to: from,
+              }
+            : {
+                from,
+                to,
+              };
+
+        if (!grouped[row.location_id]) {
+          grouped[row.location_id] = [];
+        }
+
+        grouped[row.location_id].push(normalizedRange);
+      }
+
+      setBookedRangesByLocation(grouped);
+    };
+
+    void loadBookedRanges();
+  }, [items, supabase]);
 
   const handleCheckout = async () => {
     if (hasUnselectedDateRange) {
@@ -263,6 +342,9 @@ export default function CartPage() {
     snap.pay(tokenizerResult.token, {
       onSuccess: (result) => {
         console.log("Midtrans success:", result);
+        clearCart();
+        router.push("/");
+        router.refresh();
       },
       onPending: (result) => {
         console.log("Midtrans pending:", result);
@@ -348,6 +430,13 @@ export default function CartPage() {
             {items.map((item) => {
               const days = getDays(item);
               const itemSubtotal = parsePrice(item.price) * days;
+              const bookedRanges = bookedRangesByLocation[item.id] ?? [];
+
+              const isBookedDate = (date: Date) => {
+                return bookedRanges.some((range) =>
+                  isDateWithinRange(date, range),
+                );
+              };
 
               return (
                 <article
@@ -423,6 +512,13 @@ export default function CartPage() {
                             <Calendar
                               mode="range"
                               selected={item.dateRange ?? undefined}
+                              modifiers={{
+                                booked: isBookedDate,
+                              }}
+                              modifiersClassNames={{
+                                booked:
+                                  "bg-destructive/20 text-destructive opacity-100 line-through",
+                              }}
                               onSelect={(range) => {
                                 if (!range?.from) {
                                   return;
@@ -444,6 +540,10 @@ export default function CartPage() {
                                 const target = normalizedDate.getTime();
 
                                 if (target < todayTimestamp) {
+                                  return true;
+                                }
+
+                                if (isBookedDate(normalizedDate)) {
                                   return true;
                                 }
 

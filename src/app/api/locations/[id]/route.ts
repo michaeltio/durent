@@ -121,17 +121,31 @@ export async function PUT(
 
     // Update location tags
     // First, delete existing tags
-    await supabase
-      .from("shooting_location_tags")
+    const { error: deleteTagsError } = await supabase
+      .from("shooting_location_tag")
       .delete()
       .eq("shooting_location_id", id);
 
+    if (deleteTagsError) {
+      return NextResponse.json(
+        { error: `Gagal menghapus relasi tag lama: ${deleteTagsError.message}` },
+        { status: 400 },
+      );
+    }
+
     // Then insert new tags
     if (tags.length > 0) {
-      const { data: tagRecords } = await supabase
+      const { data: tagRecords, error: tagRecordsError } = await supabase
         .from("tags")
         .select("tag_id, tag")
         .in("tag", tags);
+
+      if (tagRecordsError) {
+        return NextResponse.json(
+          { error: `Gagal mengambil data tag: ${tagRecordsError.message}` },
+          { status: 400 },
+        );
+      }
 
       if (tagRecords && tagRecords.length > 0) {
         const locationTags = tagRecords.map(
@@ -141,7 +155,18 @@ export async function PUT(
           }),
         );
 
-        await supabase.from("shooting_location_tags").insert(locationTags);
+        const { error: insertTagsError } = await supabase
+          .from("shooting_location_tag")
+          .insert(locationTags);
+
+        if (insertTagsError) {
+          return NextResponse.json(
+            {
+              error: `Gagal menyimpan relasi tag baru: ${insertTagsError.message}`,
+            },
+            { status: 400 },
+          );
+        }
       }
     }
     console.log("Test 8");

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 
-import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 
 type MidtransWebhookPayload = {
   transaction_time?: string;
@@ -66,7 +66,7 @@ function normalizeMidtransPaymentStatus(payload: MidtransWebhookPayload) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceRoleClient();
     const body = (await request.json()) as MidtransWebhookPayload;
 
     const orderId = String(body?.order_id || "").trim();
