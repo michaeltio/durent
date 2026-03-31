@@ -21,7 +21,7 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Durent",
+  title: "Durent Support",
   description: "Platform sewa kru, peralatan, dan lokasi produksi.",
 };
 

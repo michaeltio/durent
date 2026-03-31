@@ -27,7 +27,7 @@ const headlines = [
 
 const Hero = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex] = useState(0);
 
   const current = useMemo(() => headlines[activeIndex], [activeIndex]);
 
@@ -59,10 +59,13 @@ const Hero = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.45 }}
           >
-            <Button size="lg" className="group text-base px-8">
+            <a
+              href="https://app.durentsupport.com"
+              className="group inline-flex h-12 items-center justify-center rounded-full border border-transparent bg-foreground !text-black px-8 text-base font-medium  transition-colors hover:opacity-90"
+            >
               Mulai Sewa
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
+            </a>
             <Button variant="outline" size="lg" className="text-base px-8">
               Cara Kerjanya
             </Button>
