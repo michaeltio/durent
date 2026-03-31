@@ -12,7 +12,7 @@ export default function SmoothScroll({
     const lenis = new Lenis({
       lerp: 0.08,
       wheelMultiplier: 1,
-      smoothWheel: false,
+      smoothWheel: true,
     });
 
     function raf(time: number) {

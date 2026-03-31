@@ -34,35 +34,8 @@ const Hero = () => {
   return (
     <section ref={containerRef} className="relative">
       <div className="top-0 h-screen overflow-hidden flex items-center justify-center">
-        {/* Background image with Ken Burns + parallax */}
-        <motion.div
-          className="absolute inset-0 z-0"
-          // style={{ y: bgY }}
-        >
-          {/* <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.12),transparent_40%),linear-gradient(135deg,#0f172a,#111827_45%,#0b1220)] ken-burns" />
-          <div className="absolute -top-24 right-[-80px] h-80 w-80 rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute bottom-[-120px] left-[-40px] h-96 w-96 rounded-full bg-sky-300/10 blur-3xl" /> */}
-        </motion.div>
-
-        {/* Dark overlay */}
-        {/* <div className="absolute inset-0 z-[1] bg-background/70" /> */}
-
-        {/* Grain texture */}
-        {/* <div className="grain-overlay z-[2]" /> */}
-
         {/* Content */}
-        <div className="container relative z-10 text-center max-w-4xl">
-          {/* <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="inline-flex items-center gap-2 glass-panel rounded-full px-4 py-1.5 text-xs text-muted-foreground mb-8">
-              <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))] animate-pulse" />
-              Tersedia di seluruh Indonesia
-            </div>
-          </motion.div> */}
-
+        <div className="container relative z-10 text-center max-w-4xl ">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeIndex}
@@ -95,25 +68,6 @@ const Hero = () => {
             </Button>
           </motion.div>
 
-          {/* Scroll indicator */}
-          <motion.div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-          >
-            <span className="text-xs text-muted-foreground">
-              Scroll untuk menjelajahi
-            </span>
-            <div className="w-5 h-8 rounded-full border border-muted-foreground/30 flex items-start justify-center p-1">
-              <motion.div
-                className="w-1 h-2 rounded-full bg-muted-foreground/60"
-                animate={{ y: [0, 8, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              />
-            </div>
-          </motion.div>
-
           {/* Stats */}
           <motion.div
             className="mt-16 flex items-center justify-center gap-8 text-sm text-muted-foreground"
@@ -143,6 +97,24 @@ const Hero = () => {
             </div>
           </motion.div>
         </div>
+        {/* Scroll indicator */}
+        <motion.div
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+        >
+          <span className="text-xs text-muted-foreground">
+            Scroll untuk menjelajahi
+          </span>
+          <div className="w-5 h-8 rounded-full border border-muted-foreground/30 flex items-start justify-center p-1">
+            <motion.div
+              className="w-1 h-2 rounded-full bg-muted-foreground/60"
+              animate={{ y: [0, 8, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            />
+          </div>
+        </motion.div>
       </div>
     </section>
   );
